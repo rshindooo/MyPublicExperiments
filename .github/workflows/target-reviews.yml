@@ -44,11 +44,12 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
+          cache-dependency-path: TargetReviews/requirements.txt
 
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install selenium psutil
+          python -m pip install -r TargetReviews/requirements.txt
 
       - name: Verify Chrome is available
         run: |
