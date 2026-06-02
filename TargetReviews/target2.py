@@ -206,8 +206,10 @@ def search_producer(query):
         driver.get(search_url)
         wait = WebDriverWait(driver, WAIT_TIMEOUT)
         page_number = 1
+        stale_pages = 0
         
         while not shutdown_flag.is_set():
+            prev_total = len(seen_urls)
             print(f"\n[Producer] Scanning search page {page_number}...")
             
             try:
@@ -234,7 +236,16 @@ def search_producer(query):
                         seen_urls.add(clean_url)
                         url_queue.put(clean_url)
 
-            print(f"[Producer] Queued {len(seen_urls)} unique items so far.")
+            new_total = len(seen_urls)
+            if new_total == prev_total:
+                stale_pages += 1
+                print(f"[Producer] Page {page_number} yielded 0 new items ({stale_pages}/3 stale).")
+                if stale_pages >= 3:
+                    print("[Producer] 3 consecutive stale pages. Ending pagination.")
+                    break
+            else:
+                stale_pages = 0
+                print(f"[Producer] Queued {new_total} unique items so far.")
 
             if shutdown_flag.is_set():
                 break
