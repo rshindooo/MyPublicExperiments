@@ -1,0 +1,86 @@
+name: Target Reviews Scraper
+
+on:
+  workflow_dispatch:
+    inputs:
+      search_query:
+        description: Target search term to scrape.
+        required: true
+        default: pizza
+        type: string
+      num_consumer_threads:
+        description: Number of scraper consumer threads. GitHub runners are small, so start low.
+        required: true
+        default: "4"
+        type: string
+      target_base_url:
+        description: Base URL for Target.
+        required: true
+        default: https://www.target.com
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: target-reviews-scraper
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    name: Run scraper
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    env:
+      PYTHONUNBUFFERED: "1"
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install selenium psutil
+
+      - name: Verify Chrome is available
+        run: |
+          if command -v google-chrome >/dev/null 2>&1; then
+            google-chrome --version
+          elif command -v chromium >/dev/null 2>&1; then
+            chromium --version
+          else
+            echo "Chrome or Chromium is required for Selenium." >&2
+            exit 1
+          fi
+
+      - name: Write scraper .env
+        env:
+          TARGET_BASE_URL: ${{ inputs.target_base_url }}
+          SEARCH_QUERY: ${{ inputs.search_query }}
+          NUM_CONSUMER_THREADS: ${{ inputs.num_consumer_threads }}
+        run: |
+          {
+            printf 'TARGET_BASE_URL=%s\n' "$TARGET_BASE_URL"
+            printf 'SEARCH_QUERY=%s\n' "$SEARCH_QUERY"
+            printf 'NUM_CONSUMER_THREADS=%s\n' "$NUM_CONSUMER_THREADS"
+          } > TargetReviews/.env
+
+      - name: Run scraper
+        working-directory: TargetReviews
+        run: python target2.py
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: target-review-results
+          path: TargetReviews/results.txt
+          if-no-files-found: warn
