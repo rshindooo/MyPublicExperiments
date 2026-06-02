@@ -1,15 +1,15 @@
-name: Target Reviews Scraper
+name: Info Extractor
 
 on:
   workflow_dispatch:
     inputs:
       search_query:
-        description: Target search term to scrape.
+        description: Target search term to extract info for.
         required: true
         default: pizza
         type: string
       num_consumer_threads:
-        description: Number of scraper consumer threads. GitHub runners are small, so start low.
+        description: Number of extractor consumer threads. GitHub runners are small, so start low.
         required: true
         default: "4"
         type: string
@@ -23,12 +23,12 @@ permissions:
   contents: read
 
 concurrency:
-  group: target-reviews-scraper
+  group: info-extractor
   cancel-in-progress: false
 
 jobs:
-  scrape:
-    name: Run scraper
+  extract:
+    name: Run Info Extractor
     runs-on: ubuntu-latest
     timeout-minutes: 120
 
@@ -62,7 +62,7 @@ jobs:
             exit 1
           fi
 
-      - name: Write scraper .env
+      - name: Write runtime .env
         env:
           TARGET_BASE_URL: ${{ inputs.target_base_url }}
           SEARCH_QUERY: ${{ inputs.search_query }}
@@ -74,7 +74,7 @@ jobs:
             printf 'NUM_CONSUMER_THREADS=%s\n' "$NUM_CONSUMER_THREADS"
           } > TargetReviews/.env
 
-      - name: Run scraper
+      - name: Run Info Extractor
         working-directory: TargetReviews
         run: python target2.py
 
@@ -82,6 +82,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: target-review-results
+          name: info-extractor-results
           path: TargetReviews/results.txt
           if-no-files-found: warn
